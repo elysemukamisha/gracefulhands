@@ -1,0 +1,8 @@
+
+{
+  "name": "Graceful Hands Therapeutic Massage",
+  "description": "A modern luxury booking platform for high-end therapeutic massage services, featuring a serene design, seamless booking flow, and a comprehensive therapist dashboard.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
