@@ -1,39 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
+import Vapi from '@vapi-ai/web';
 import { Mic, MicOff, X, Loader2, Sparkles, Phone, Calendar, AlertCircle } from 'lucide-react';
 import { CONTACT_INFO } from '../constants';
 
-function encode(bytes: Uint8Array) {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-function decode(base64: string) {
-  const bin = atob(base64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-  for (let ch = 0; ch < numChannels; ch++) {
-    const channelData = buffer.getChannelData(ch);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + ch] / 32768.0;
-    }
-  }
-  return buffer;
-}
+const VAPI_PUBLIC_KEY = '80e574b9-ee43-4516-a298-7b09c8c1cc32';
 
 interface BookingSummary {
   firstName: string;
@@ -49,81 +20,22 @@ interface VoiceAssistantProps {
 }
 
 const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ isOpen, onClose, onBookingCollected }) => {
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive]       = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [transcription, setTranscription] = useState<string>('');
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted]         = useState(false);
+  const [volume, setVolume]           = useState(0);
+  const [transcript, setTranscript]   = useState('');
+  const [error, setError]             = useState<string | null>(null);
 
-  const sessionRef = useRef<any>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const inputAudioContextRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef<number>(0);
-  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-  const streamRef = useRef<MediaStream | null>(null);
-  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-  const isMutedRef = useRef(false);
+  const vapiRef = useRef<Vapi | null>(null);
 
-  const stopAudio = useCallback(() => {
-    sourcesRef.current.forEach(s => { try { s.stop(); } catch (_) {} });
-    sourcesRef.current.clear();
-    nextStartTimeRef.current = 0;
-  }, []);
+  const now = new Date().toLocaleString('en-CA', {
+    timeZone: 'America/Edmonton',
+    dateStyle: 'full',
+    timeStyle: 'short',
+  });
 
-  const closeSession = useCallback(() => {
-    if (sessionRef.current) {
-      try { sessionRef.current.close(); } catch (_) {}
-      sessionRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    if (scriptProcessorRef.current) {
-      scriptProcessorRef.current.disconnect();
-      scriptProcessorRef.current = null;
-    }
-    if (inputAudioContextRef.current) {
-      inputAudioContextRef.current.close();
-      inputAudioContextRef.current = null;
-    }
-    stopAudio();
-    setIsActive(false);
-    setIsConnecting(false);
-  }, [stopAudio]);
-
-  useEffect(() => {
-    if (!isOpen) closeSession();
-  }, [isOpen, closeSession]);
-
-  const startSession = async () => {
-    setIsConnecting(true);
-    setError(null);
-    setTranscription('');
-
-    try {
-      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('API key not configured.');
-
-      const ai = new GoogleGenAI({ apiKey });
-
-      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      }
-      if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      streamRef.current = stream;
-
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      inputAudioContextRef.current = inputCtx;
-
-      const now = new Date().toLocaleString('en-CA', { timeZone: 'America/Edmonton', dateStyle: 'full', timeStyle: 'short' });
-
-      const systemInstruction = `
-You are Rachel, the AI voice receptionist for Graceful Hands Therapeutic Massage — a professional, home-based clinical practice in South Edmonton (Chappelle/Heritage Valley area). The therapist is Aubine Matala, RMT.
+  const SYSTEM_PROMPT = `You are Rachel, the AI voice receptionist for Graceful Hands Therapeutic Massage — a professional, home-based clinical practice in South Edmonton (Chappelle/Heritage Valley area). The therapist is Aubine Matala, RMT.
 
 YOUR PERSONALITY:
 - Warm, empathetic, and professional — you sound like someone dedicated to health and wellness.
@@ -135,184 +47,146 @@ YOUR PERSONALITY:
 CURRENT DATE/TIME: ${now} (America/Edmonton timezone)
 BUSINESS HOURS: Monday–Friday 9AM–7PM, Saturday 10AM–4PM, Sunday closed.
 
-YOUR GREETING: Start EVERY new conversation with:
-"Graceful Hands Therapeutic Massage, Rachel speaking. How can I help you feel better today?"
-
-SERVICES YOU BOOK:
-- Therapeutic Massage: chronic pain, injury recovery, deep tissue — 60m $110 / 75m $135 / 90m $150
-- Relaxation/Swedish Massage: stress relief — 60m $110 / 75m $135 / 90m $150
-- Prenatal Massage: expectant mothers — 60m $110 / 75m $135 / 90m $150
-- Mobile At-Home: Graceful Hands comes to you — 60m $130 / 75m $155 / 90m $170
-- Mini Sessions: Head/Neck/Shoulders or Face/Arms/Feet (45m $85), Neck & Back or Legs & Feet or Scalp & Face (30m $65)
+SERVICES & PRICING:
+- Therapeutic Massage (chronic pain, injury recovery, deep tissue): 60m $110 / 75m $135 / 90m $150
+- Relaxation/Swedish Massage (stress relief): 60m $110 / 75m $135 / 90m $150
+- Prenatal Massage (expectant mothers): 60m $110 / 75m $135 / 90m $150
+- Sports & Performance: 60m $110 / 75m $135 / 90m $150
+- Mobile At-Home Sessions: 60m $130 / 75m $155 / 90m $170
+- Mini Targeted Sessions: 30m $65 / 45m $85
 - Direct billing available for most major insurance providers.
 
 CALL FLOW — ask ONE question at a time:
 1. Greet warmly (use the greeting above).
-2. Find out which service or session length they are interested in.
-3. Confirm they are looking for the clinic in South Edmonton / Heritage Valley / Chappelle area.
+2. Find out which service and session length they are interested in.
+3. Confirm they are in South Edmonton / Heritage Valley / Chappelle area.
 4. Ask: "Are we working on a specific injury or area of concern today, or is this more for general relaxation?"
 5. Ask: "Do you have extended health benefits? We provide receipts for easy insurance reimbursement."
-6. Collect their first name.
-7. Collect their phone number.
-8. Collect their email address.
-9. Offer available appointment times (use showBookingSummary to display a booking review).
-10. Log the appointment using logLead tool.
-11. Confirm: "You're all set! Aubine Matala, RMT, will be seeing you on [date/time]. We look forward to helping you feel your best."
-12. Thank them and close warmly.
+6. Collect first name, phone number, then email address.
+7. Offer available appointment times and confirm their preferred day/time.
+8. Confirm: "You're all set! Aubine Matala, RMT, will be seeing you. We look forward to helping you feel your best."
+9. Thank them and close warmly.
 
 RULES:
-- NEVER give medical diagnoses — say "Aubine will perform a full assessment during your session to determine the best approach."
-- NEVER offer non-therapeutic or inappropriate services. This is a strictly professional clinical practice.
-- If the schedule is full for same-day, offer the next available opening.
-- If caller asks to speak to Aubine directly, say "Aubine is currently with a client. I can arrange a callback between sessions — would that work for you?"
-- If unsure about insurance, say "Aubine will provide a detailed receipt you can submit directly to your provider."
-- Location: ${CONTACT_INFO.address}. Phone: ${CONTACT_INFO.phone}.
-      `;
+- NEVER give medical diagnoses — say "Aubine will perform a full assessment during your session."
+- NEVER offer non-therapeutic services. Strictly professional clinical practice.
+- If schedule is full for same-day, offer the next available opening.
+- If caller wants to speak to Aubine, say "Aubine is currently with a client. I can arrange a callback between sessions."
+- If unsure about insurance, say "Aubine will provide a detailed receipt you can submit to your provider."
+- Location: ${CONTACT_INFO.address}. Phone: ${CONTACT_INFO.phone}.`;
 
-      const showBookingSummaryDeclaration: FunctionDeclaration = {
-        name: 'showBookingSummary',
-        parameters: {
-          type: Type.OBJECT,
-          description: 'Display a booking review card on screen once all details are collected.',
-          properties: {
-            firstName:    { type: Type.STRING, description: "Client's first name" },
-            anyPain:      { type: Type.STRING, description: "Area of concern or note about their session goal" },
-            preferredDay: { type: Type.STRING, description: "Preferred appointment day or date" },
-            timing:       { type: Type.STRING, enum: ['Morning', 'Evening'], description: "Preferred time of day" },
-          },
-          required: ['firstName', 'anyPain', 'preferredDay', 'timing'],
-        },
-      };
+  const stopCall = useCallback(() => {
+    if (vapiRef.current) {
+      vapiRef.current.stop();
+    }
+    setIsActive(false);
+    setIsConnecting(false);
+    setIsMuted(false);
+    setVolume(0);
+  }, []);
 
-      const logLeadDeclaration: FunctionDeclaration = {
-        name: 'logLead',
-        parameters: {
-          type: Type.OBJECT,
-          description: 'Log a completed appointment booking with all client details.',
-          properties: {
-            name:        { type: Type.STRING, description: "Client full name" },
-            phone:       { type: Type.STRING, description: "Client phone number" },
-            email:       { type: Type.STRING, description: "Client email address" },
-            serviceType: { type: Type.STRING, description: "Type of massage service booked" },
-            duration:    { type: Type.STRING, description: "Session duration in minutes" },
-            appointmentDate: { type: Type.STRING, description: "Confirmed appointment date and time" },
-            notes:       { type: Type.STRING, description: "Pain points, injuries, or special notes" },
-          },
-          required: ['name', 'phone', 'serviceType'],
-        },
-      };
+  useEffect(() => {
+    if (!isOpen) stopCall();
+  }, [isOpen, stopCall]);
 
-      const sessionPromise = ai.live.connect({
-        model: 'gemini-live-2.5-flash-preview',
-        callbacks: {
-          onopen: () => {
-            setIsConnecting(false);
-            setIsActive(true);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { vapiRef.current?.stop(); };
+  }, []);
 
-            const source = inputCtx.createMediaStreamSource(stream);
-            const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
-            scriptProcessorRef.current = scriptProcessor;
+  const startCall = async () => {
+    setError(null);
+    setTranscript('');
+    setIsConnecting(true);
 
-            scriptProcessor.onaudioprocess = (e) => {
-              if (!sessionRef.current || isMutedRef.current) return;
-              const inputData = e.inputBuffer.getChannelData(0);
-              const int16 = new Int16Array(inputData.length);
-              for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
-              sessionRef.current.sendRealtimeInput({
-                media: { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' },
-              });
-            };
+    try {
+      const vapi = new Vapi(VAPI_PUBLIC_KEY);
+      vapiRef.current = vapi;
 
-            source.connect(scriptProcessor);
-            scriptProcessor.connect(inputCtx.destination);
-          },
-
-          onmessage: async (message: LiveServerMessage) => {
-            // Play audio response
-            const parts = message.serverContent?.modelTurn?.parts ?? [];
-            for (const part of parts) {
-              if (part.inlineData?.data) {
-                const ctx = audioContextRef.current!;
-                nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-                const buffer = await decodeAudioData(decode(part.inlineData.data), ctx, 24000, 1);
-                const audioSource = ctx.createBufferSource();
-                audioSource.buffer = buffer;
-                audioSource.connect(ctx.destination);
-                audioSource.onended = () => sourcesRef.current.delete(audioSource);
-                sourcesRef.current.add(audioSource);
-                audioSource.start(nextStartTimeRef.current);
-                nextStartTimeRef.current += buffer.duration;
-              }
-            }
-
-            // Show transcription
-            if (message.serverContent?.outputTranscription?.text) {
-              setTranscription(prev => prev + message.serverContent!.outputTranscription!.text + ' ');
-            }
-
-            // Handle interruptions
-            if (message.serverContent?.interrupted) stopAudio();
-
-            // Handle function calls
-            if (message.toolCall) {
-              for (const fc of message.toolCall.functionCalls) {
-                if (fc.name === 'showBookingSummary') {
-                  onBookingCollected(fc.args as any);
-                }
-                if (fc.name === 'logLead') {
-                  // Log to console — connect to a CRM/backend here when ready
-                  console.log('[Graceful Hands Lead]', fc.args);
-                }
-                // Always send tool response
-                if (sessionRef.current) {
-                  sessionRef.current.sendToolResponse({
-                    functionResponses: { id: fc.id, name: fc.name, response: { result: 'ok' } },
-                  });
-                }
-              }
-            }
-          },
-
-          onerror: (e: any) => {
-            console.error('[VoiceAssistant error]', e);
-            setError('Connection error. Please check your microphone and try again.');
-            closeSession();
-          },
-
-          onclose: () => {
-            setIsActive(false);
-          },
-        },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction,
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-          },
-          tools: [{ functionDeclarations: [showBookingSummaryDeclaration, logLeadDeclaration] }],
-          outputAudioTranscription: {},
-        },
+      vapi.on('call-start', () => {
+        setIsConnecting(false);
+        setIsActive(true);
       });
 
-      sessionRef.current = await sessionPromise;
+      vapi.on('call-end', () => {
+        setIsActive(false);
+        setIsConnecting(false);
+        setVolume(0);
+      });
+
+      vapi.on('speech-start', () => setVolume(1));
+      vapi.on('speech-end',   () => setVolume(0));
+
+      vapi.on('volume-level', (v: number) => setVolume(v));
+
+      vapi.on('message', (msg: any) => {
+        // Capture transcripts
+        if (msg.type === 'transcript' && msg.transcript) {
+          setTranscript(prev => prev + (prev ? ' ' : '') + msg.transcript);
+        }
+        // Handle booking summary tool call if configured in Vapi dashboard
+        if (msg.type === 'function-call' && msg.functionCall?.name === 'showBookingSummary') {
+          onBookingCollected(msg.functionCall.parameters as BookingSummary);
+        }
+      });
+
+      vapi.on('error', (err: any) => {
+        console.error('[Vapi error]', err);
+        const msg = err?.error?.message || '';
+        if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('microphone')) {
+          setError('Microphone access denied. Please allow microphone permission and try again.');
+        } else if (msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('auth')) {
+          setError('Service unavailable. Please try again or call us directly.');
+        } else {
+          setError('Could not connect. Please try again or call ' + CONTACT_INFO.phone);
+        }
+        setIsActive(false);
+        setIsConnecting(false);
+      });
+
+      await vapi.start({
+        name: 'Rachel',
+        firstMessage: 'Graceful Hands Therapeutic Massage, Rachel speaking. How can I help you feel better today?',
+        transcriber: {
+          provider: 'deepgram',
+          model: 'nova-2',
+          language: 'en-US',
+        },
+        model: {
+          provider: 'openai',
+          model: 'gpt-4o',
+          messages: [{ role: 'system', content: SYSTEM_PROMPT }],
+          temperature: 0.6,
+        },
+        voice: {
+          provider: 'openai',
+          voiceId: 'nova',
+        },
+      } as any);
+
     } catch (err: any) {
-      console.error('[VoiceAssistant startSession]', err);
-      const msg = err?.message?.includes('microphone')
-        ? 'Microphone access denied. Please allow microphone permission and try again.'
-        : err?.message?.includes('API key')
-        ? 'AI service not configured. Please contact the site administrator.'
-        : 'Could not connect to AI. Please try again.';
-      setError(msg);
+      console.error('[Vapi startCall]', err);
+      setError('Could not start call. Please try again or call ' + CONTACT_INFO.phone);
       setIsConnecting(false);
-      closeSession();
     }
   };
+
+  const toggleMute = () => {
+    if (!vapiRef.current) return;
+    const next = !isMuted;
+    vapiRef.current.setMuted(next);
+    setIsMuted(next);
+  };
+
+  // Volume bar heights (5 bars)
+  const bars = [0.4, 0.7, 1.0, 0.7, 0.4];
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2D4F3E]/80 backdrop-blur-sm p-4 animate-fade-in">
       <div className="bg-white w-full max-w-lg rounded-sm shadow-2xl overflow-hidden border border-white/20">
+
         {/* Header */}
         <div className="bg-[#2D4F3E] p-6 flex justify-between items-center border-b border-white/5">
           <div className="flex items-center gap-3">
@@ -328,12 +202,12 @@ RULES:
         </div>
 
         {/* Body */}
-        <div className="p-8 space-y-8 min-h-[400px] flex flex-col justify-between">
-          <div className="space-y-6 flex-grow">
+        <div className="p-8 min-h-[400px] flex flex-col justify-between">
+          <div className="flex-grow flex flex-col justify-center">
 
-            {/* Idle state */}
+            {/* Idle */}
             {!isActive && !isConnecting && !error && (
-              <div className="text-center py-10 space-y-6">
+              <div className="text-center space-y-6 py-8">
                 <div className="w-24 h-24 bg-[#FCF9F5] rounded-full flex items-center justify-center mx-auto shadow-inner">
                   <Mic size={40} className="text-[#D4AF37]" />
                 </div>
@@ -344,7 +218,7 @@ RULES:
                   </p>
                 </div>
                 <button
-                  onClick={startSession}
+                  onClick={startCall}
                   className="bg-[#D4AF37] text-white px-8 py-3 rounded-sm font-bold uppercase tracking-widest text-xs hover:bg-[#B89830] transition-all shadow-lg flex items-center gap-2 mx-auto"
                 >
                   <Phone size={16} /> Call Rachel Now
@@ -354,50 +228,69 @@ RULES:
 
             {/* Connecting */}
             {isConnecting && (
-              <div className="text-center py-20">
+              <div className="text-center py-16">
                 <Loader2 className="animate-spin mx-auto text-[#D4AF37] mb-4" size={48} />
                 <p className="text-[#2D4F3E] serif italic animate-pulse">Connecting to Rachel...</p>
               </div>
             )}
 
-            {/* Active session */}
+            {/* Active */}
             {isActive && (
               <div className="space-y-8 animate-fade-in">
-                <div className="flex justify-center">
+                {/* Avatar with voice visualiser */}
+                <div className="flex flex-col items-center gap-4">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-full animate-ping"></div>
+                    {volume > 0 && (
+                      <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-full animate-ping" />
+                    )}
                     <div className="relative w-24 h-24 bg-[#2D4F3E] rounded-full flex items-center justify-center shadow-2xl">
-                      {isMuted ? <MicOff size={40} className="text-red-400" /> : <Mic size={40} className="text-[#D4AF37]" />}
+                      {isMuted
+                        ? <MicOff size={36} className="text-red-400" />
+                        : <Mic size={36} className="text-[#D4AF37]" />
+                      }
                     </div>
+                  </div>
+
+                  {/* Volume bars */}
+                  <div className="flex items-end gap-1 h-8">
+                    {bars.map((scale, i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 bg-[#D4AF37] rounded-full transition-all duration-100"
+                        style={{ height: `${Math.max(4, volume * scale * 32)}px`, opacity: volume > 0 ? 1 : 0.25 }}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="text-center">
+                    <h3 className="text-lg font-bold serif text-[#2D4F3E]">
+                      {isMuted ? 'Microphone Muted' : 'Rachel is Listening'}
+                    </h3>
+                    <p className="text-gray-400 text-xs uppercase tracking-widest mt-1">Live AI Receptionist · Powered by Vapi</p>
                   </div>
                 </div>
 
-                <div className="text-center space-y-2">
-                  <h3 className="text-lg font-bold serif text-[#2D4F3E]">
-                    {isMuted ? 'Microphone Muted' : "Rachel is Listening"}
-                  </h3>
-                  <p className="text-gray-400 text-xs uppercase tracking-widest">Live AI Receptionist Active</p>
-                </div>
-
-                {transcription && (
-                  <div className="bg-gray-50 p-4 rounded-sm border border-gray-100 max-h-36 overflow-y-auto">
-                    <p className="text-sm text-gray-600 italic leading-relaxed">{transcription}</p>
+                {/* Transcript */}
+                {transcript && (
+                  <div className="bg-gray-50 p-4 rounded-sm border border-gray-100 max-h-32 overflow-y-auto">
+                    <p className="text-sm text-gray-600 italic leading-relaxed">{transcript}</p>
                   </div>
                 )}
 
+                {/* Controls */}
                 <div className="flex gap-3 justify-center">
                   <button
-                    onClick={() => { setIsMuted(m => { isMutedRef.current = !m; return !m; }); }}
+                    onClick={toggleMute}
                     className={`px-5 py-2 rounded-sm text-xs font-bold uppercase tracking-widest border transition-all ${
                       isMuted
                         ? 'bg-red-500 text-white border-red-500'
-                        : 'border-gray-300 text-gray-500 hover:border-[#2D4F3E] hover:text-[#2D4F3E]'
+                        : 'border-gray-300 text-gray-600 hover:border-[#2D4F3E] hover:text-[#2D4F3E]'
                     }`}
                   >
                     {isMuted ? 'Unmute' : 'Mute'}
                   </button>
                   <button
-                    onClick={closeSession}
+                    onClick={stopCall}
                     className="px-5 py-2 rounded-sm text-xs font-bold uppercase tracking-widest border border-red-300 text-red-500 hover:bg-red-50 transition-all"
                   >
                     End Call
@@ -406,27 +299,25 @@ RULES:
               </div>
             )}
 
-            {/* Error state */}
+            {/* Error */}
             {error && (
-              <div className="text-center py-10 space-y-6">
-                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
-                  <AlertCircle size={32} />
+              <div className="text-center py-10 space-y-5">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+                  <AlertCircle size={32} className="text-red-500" />
                 </div>
-                <div>
-                  <p className="text-red-500 font-bold text-sm max-w-xs mx-auto">{error}</p>
-                  <button
-                    onClick={startSession}
-                    className="mt-4 text-[#D4AF37] underline text-sm font-bold uppercase tracking-widest"
-                  >
-                    Try Again
-                  </button>
-                </div>
+                <p className="text-red-500 font-bold text-sm max-w-xs mx-auto">{error}</p>
+                <button
+                  onClick={startCall}
+                  className="text-[#D4AF37] underline text-sm font-bold uppercase tracking-widest"
+                >
+                  Try Again
+                </button>
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="pt-6 border-t border-gray-100 flex justify-between items-center text-gray-400">
+          <div className="pt-6 border-t border-gray-100 flex justify-between items-center text-gray-400 mt-6">
             <div className="flex items-center gap-2">
               <Phone size={14} className="text-[#D4AF37]" />
               <span className="text-[10px] uppercase tracking-widest font-bold">{CONTACT_INFO.phone}</span>
