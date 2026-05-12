@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   instagramUrl: CONTACT_INFO.instagram,
   facebookUrl: '#',
   announcementBar: 'New Clients: Save 15% on your first 90-minute session.',
-  headshotUrl: 'https://gracefulhands.ca/images/aubine.jpg',
+  headshotUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=800',
 };
 
 export const db = {
