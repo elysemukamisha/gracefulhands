@@ -23,10 +23,10 @@ const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
 const App: React.FC = () => {
   useEffect(() => {
     db.init().then(() => {
-      // Apply settings colors after sync; fall back to cached if API is unavailable
       const s = db.getSettings();
       document.documentElement.style.setProperty('--primary-color', s.primaryColor);
       document.documentElement.style.setProperty('--secondary-color', s.secondaryColor);
+      window.dispatchEvent(new Event('db:synced'));
     });
   }, []);
 

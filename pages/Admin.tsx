@@ -78,9 +78,19 @@ const Admin: React.FC = () => {
 // --- Sub-Components ---
 
 const DashboardOverview = () => {
-  const appointments = db.getAppointments();
-  const services = db.getServices();
-  const messages = db.getMessages();
+  const [appointments, setAppointments] = React.useState(() => db.getAppointments());
+  const [services, setServices] = React.useState(() => db.getServices());
+  const [messages, setMessages] = React.useState(() => db.getMessages());
+
+  React.useEffect(() => {
+    const sync = () => {
+      setAppointments(db.getAppointments());
+      setServices(db.getServices());
+      setMessages(db.getMessages());
+    };
+    window.addEventListener('db:synced', sync);
+    return () => window.removeEventListener('db:synced', sync);
+  }, []);
 
   const stats = [
     { label: 'Total Revenue', value: `$${appointments.reduce((sum, a) => sum + (a.status === 'Confirmed' ? a.totalPrice : 0), 0)}`, icon: <DollarSign />, trend: '+12%' },
@@ -158,6 +168,12 @@ const DashboardOverview = () => {
 const BookingsManager = () => {
   const [appointments, setAppointments] = useState<Appointment[]>(db.getAppointments());
 
+  useEffect(() => {
+    const sync = () => setAppointments(db.getAppointments());
+    window.addEventListener('db:synced', sync);
+    return () => window.removeEventListener('db:synced', sync);
+  }, []);
+
   const updateStatus = (id: string, status: Appointment['status']) => {
     db.updateAppointment(id, { status });
     setAppointments(db.getAppointments());
@@ -227,6 +243,12 @@ const BookingsManager = () => {
 const ServicesManager = () => {
   const [services, setServices] = useState<Service[]>(db.getServices());
   const [editing, setEditing] = useState<Partial<Service> | null>(null);
+
+  useEffect(() => {
+    const sync = () => setServices(db.getServices());
+    window.addEventListener('db:synced', sync);
+    return () => window.removeEventListener('db:synced', sync);
+  }, []);
 
   const handleDelete = (id: string) => {
     const updated = services.filter(s => s.id !== id);
@@ -389,6 +411,12 @@ const ServicesManager = () => {
 const MessagesManager = () => {
   const [messages, setMessages] = useState<ContactMessage[]>(db.getMessages());
 
+  useEffect(() => {
+    const sync = () => setMessages(db.getMessages());
+    window.addEventListener('db:synced', sync);
+    return () => window.removeEventListener('db:synced', sync);
+  }, []);
+
   return (
     <div className="space-y-8">
        <h1 className="text-3xl font-bold serif text-[#2D4F3E]">Inbound Inquiry</h1>
@@ -422,6 +450,12 @@ const MessagesManager = () => {
 const SettingsManager = () => {
   const [settings, setSettings] = useState<SiteSettings>(db.getSettings());
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setSettings(db.getSettings());
+    window.addEventListener('db:synced', sync);
+    return () => window.removeEventListener('db:synced', sync);
+  }, []);
 
   const handleSave = () => {
     db.saveSettings(settings);
@@ -531,6 +565,12 @@ const SettingsManager = () => {
 
 const LeadsManager = () => {
   const [leads, setLeads] = useState<Lead[]>(db.getLeads());
+
+  useEffect(() => {
+    const sync = () => setLeads(db.getLeads());
+    window.addEventListener('db:synced', sync);
+    return () => window.removeEventListener('db:synced', sync);
+  }, []);
 
   const updateStatus = (id: string, status: Lead['status']) => {
     db.updateLead(id, { status });
