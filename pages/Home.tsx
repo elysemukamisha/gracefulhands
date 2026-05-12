@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Star, ShieldCheck, Heart, Sparkles, Send, Phone, MapPin, Mail, Mic } from 'lucide-react';
+import { ArrowRight, Star, ShieldCheck, Heart, Sparkles, Send, Phone, MapPin, Mail, Mic, CheckCircle } from 'lucide-react';
+import { useForm, ValidationError } from '@formspree/react';
 import { SERVICES, TESTIMONIALS, TEAM, CONTACT_INFO } from '../constants';
 import VoiceAssistant from '../components/VoiceAssistant';
 import BookingReviewModal from '../components/BookingReviewModal';
@@ -16,6 +17,7 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null);
+  const [contactState, handleContactSubmit] = useForm('xlgeqjar');
 
   const handleBookingCollected = (summary: BookingSummary) => {
     setBookingSummary(summary);
@@ -239,14 +241,35 @@ const Home: React.FC = () => {
             </div>
             <div className="bg-white p-10 shadow-2xl rounded-sm">
               <h3 className="text-2xl font-bold serif text-[#2D4F3E] mb-6 text-center">Inquiry Form</h3>
-              <form action={CONTACT_INFO.formspreeEndpoint} method="POST" className="space-y-6">
-                <input name="name" type="text" placeholder="Full Name" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none" />
-                <input name="email" type="email" placeholder="Email Address" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none" />
-                <textarea name="message" placeholder="How can we help you?" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm h-32 focus:border-[#D4AF37] outline-none"></textarea>
-                <button type="submit" className="w-full bg-[#D4AF37] text-white py-4 font-bold uppercase tracking-widest text-xs hover:bg-[#B89830] transition-all flex items-center justify-center gap-2">
-                  <Send size={16} /> Send Message
-                </button>
-              </form>
+              {contactState.succeeded ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
+                  <CheckCircle className="text-[#2D4F3E]" size={48} />
+                  <p className="text-[#2D4F3E] font-bold serif text-xl">Message Received</p>
+                  <p className="text-gray-400 text-sm">We'll be in touch within 24 hours.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleContactSubmit} className="space-y-6">
+                  <div>
+                    <input name="name" type="text" placeholder="Full Name" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none" />
+                    <ValidationError field="name" prefix="Name" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
+                  </div>
+                  <div>
+                    <input name="email" type="email" placeholder="Email Address" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none" />
+                    <ValidationError field="email" prefix="Email" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
+                  </div>
+                  <div>
+                    <textarea name="message" placeholder="How can we help you?" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm h-32 focus:border-[#D4AF37] outline-none" />
+                    <ValidationError field="message" prefix="Message" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={contactState.submitting}
+                    className="w-full bg-[#D4AF37] text-white py-4 font-bold uppercase tracking-widest text-xs hover:bg-[#B89830] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Send size={16} /> {contactState.submitting ? 'Sending…' : 'Send Message'}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
