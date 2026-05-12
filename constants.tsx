@@ -16,6 +16,9 @@ export const CONTACT_INFO = {
   instagram: 'https://www.instagram.com/gracefulhands_massage?igsh=MnNmeXV2NnlyemM4',
   tagline: 'Restoring Balance, One Touch at a Time.',
   formspreeEndpoint: 'https://formspree.io/f/xlgeqjar',
+  // Deploy backend/CalendarWebhook.gs as a Web App under aubine.massage@gmail.com,
+  // then paste the deployed URL here.
+  calendarWebhookUrl: 'https://script.google.com/macros/s/AKfycbz9caoi17vRj9aSk-93DORsKfUDbmg82ZAnERw1Ju01aAOFCzpMlO38ifKhLf_jIfIkag/exec',
 };
 
 const CLINIC_PRICES = { 60: 110, 75: 135, 90: 150 };

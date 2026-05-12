@@ -87,7 +87,9 @@ const Booking: React.FC = () => {
         body: JSON.stringify(bookingPayload)
       });
 
-      // Track locally
+      const aptDate = formData.date?.toDateString() || 'Voice Lead - Pending Final Date';
+
+      // Track locally + sync to MySQL
       db.addAppointment({
         id: Date.now().toString(),
         clientName: formData.name,
@@ -95,7 +97,7 @@ const Booking: React.FC = () => {
         phone: formData.phone,
         serviceId: formData.serviceId,
         duration: formData.duration,
-        date: formData.date?.toDateString() || 'Voice Lead - Pending Final Date',
+        date: aptDate,
         time: formData.time,
         status: 'Confirmed',
         totalPrice,
@@ -106,6 +108,24 @@ const Booking: React.FC = () => {
           medical: formData.medical
         }
       });
+
+      // Create Google Calendar event via Apps Script webhook
+      if (CONTACT_INFO.calendarWebhookUrl) {
+        const params = new URLSearchParams({
+          name:     formData.name,
+          phone:    formData.phone,
+          email:    formData.email,
+          service:  currentService?.name || '',
+          duration: String(formData.duration),
+          date:     aptDate,
+          time:     formData.time,
+          price:    String(totalPrice),
+          pressure: formData.pressure,
+          focus:    formData.focus,
+          medical:  formData.medical,
+        });
+        fetch(`${CONTACT_INFO.calendarWebhookUrl}?${params}`).catch(() => {});
+      }
 
       alert(`Restoration journey confirmed, ${formData.name}! We'll see you soon.`);
       navigate('/');
