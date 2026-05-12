@@ -114,16 +114,67 @@ const Home: React.FC = () => {
         onCancel={() => setBookingSummary(null)}
       />
 
-      {/* Philosophy Section */}
+      {/* Philosophy + Inquiry Form */}
       <section className="py-24 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h4 className="text-[#D4AF37] uppercase tracking-[0.3em] text-xs font-bold mb-6">Our Philosophy</h4>
-          <h2 className="text-3xl md:text-5xl font-bold serif text-[#2D4F3E] mb-8">More Than Just a Massage.</h2>
-          <p className="text-gray-600 text-lg leading-relaxed font-light mb-12">
-            At Graceful Hands, we believe that massage is not a luxury—it is a vital component of whole-body health. 
-            Whether you are seeking relief from chronic pain, recovering from an injury, or simply need to decompress 
-            from daily stress, our approach combines clinical expertise with a serene environment to help you feel your best.
-          </p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Top row: text left, form right */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-stretch mb-20">
+            <div className="flex flex-col justify-center">
+              <h4 className="text-[#D4AF37] uppercase tracking-[0.3em] text-xs font-bold mb-6">Our Philosophy</h4>
+              <h2 className="text-3xl md:text-5xl font-bold serif text-[#2D4F3E] mb-8">More Than Just a Massage.</h2>
+              <p className="text-gray-600 text-lg leading-relaxed font-light">
+                At Graceful Hands, we believe that massage is not a luxury—it is a vital component of whole-body health.
+                Whether you are seeking relief from chronic pain, recovering from an injury, or simply need to decompress
+                from daily stress, our approach combines clinical expertise with a serene environment to help you feel your best.
+              </p>
+            </div>
+
+            <div className="bg-white p-10 shadow-xl border border-gray-200 rounded-sm flex flex-col">
+              <h3 className="text-xl font-bold serif text-[#2D4F3E] mb-6">Inquiry Form</h3>
+              {contactState.succeeded ? (
+                <div className="flex flex-col items-center justify-center flex-1 text-center gap-4">
+                  <CheckCircle className="text-[#2D4F3E]" size={40} />
+                  <p className="text-[#2D4F3E] font-bold serif text-lg">Message Received</p>
+                  <p className="text-gray-400 text-sm">We'll be in touch within 24 hours.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleContactSubmit} className="flex flex-col flex-1 gap-6" encType="multipart/form-data">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Your Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      placeholder="you@example.com"
+                      className="w-full p-4 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                    />
+                    <ValidationError field="email" prefix="Email" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Attach a File</label>
+                    <div className="w-full p-4 bg-white border border-gray-100 h-full min-h-[120px] flex items-center">
+                      <input
+                        type="file"
+                        name="upload"
+                        title="Attach a file to your inquiry"
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-xs file:font-bold file:uppercase file:tracking-widest file:bg-[#2D4F3E] file:text-white hover:file:bg-[#3d6952] file:cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={contactState.submitting}
+                    className="w-full bg-[#D4AF37] text-white py-4 font-bold uppercase tracking-widest text-xs hover:bg-[#B89830] transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto"
+                  >
+                    <Send size={16} /> {contactState.submitting ? 'Sending…' : 'Send'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+
+          {/* 3 pillars below */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 text-center">
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 bg-[#F5F5DC] text-[#2D4F3E] rounded-full flex items-center justify-center mb-6">
@@ -147,6 +198,7 @@ const Home: React.FC = () => {
               <p className="text-gray-500 leading-relaxed text-sm">A peaceful environment designed to lower stress levels from the moment you arrive.</p>
             </div>
           </div>
+
         </div>
       </section>
 
@@ -203,13 +255,15 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Contact & Map Section */}
+      {/* Contact & Inquiry Section */}
       <section className="py-24 bg-[#2D4F3E] text-white">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
+
+            {/* Contact info */}
             <div>
-              <h2 className="text-3xl md:text-5xl font-bold serif mb-8 leading-tight">Begin Your Path <br /> to Recovery.</h2>
-              <div className="space-y-8 mb-12">
+              <h2 className="text-3xl md:text-5xl font-bold serif mb-12 leading-tight">Begin Your Path <br /> to Recovery.</h2>
+              <div className="space-y-8">
                 <div className="flex items-center gap-6">
                   <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-[#D4AF37]">
                     <Phone size={24} />
@@ -224,7 +278,7 @@ const Home: React.FC = () => {
                     <MapPin size={24} />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Sanctuary Location</p>
+                    <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Location</p>
                     <p className="text-xl font-bold">{CONTACT_INFO.address}</p>
                   </div>
                 </div>
@@ -239,38 +293,7 @@ const Home: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-white p-10 shadow-2xl rounded-sm">
-              <h3 className="text-2xl font-bold serif text-[#2D4F3E] mb-6 text-center">Inquiry Form</h3>
-              {contactState.succeeded ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
-                  <CheckCircle className="text-[#2D4F3E]" size={48} />
-                  <p className="text-[#2D4F3E] font-bold serif text-xl">Message Received</p>
-                  <p className="text-gray-400 text-sm">We'll be in touch within 24 hours.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleContactSubmit} className="space-y-6">
-                  <div>
-                    <input name="name" type="text" placeholder="Full Name" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none" />
-                    <ValidationError field="name" prefix="Name" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
-                  </div>
-                  <div>
-                    <input name="email" type="email" placeholder="Email Address" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none" />
-                    <ValidationError field="email" prefix="Email" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
-                  </div>
-                  <div>
-                    <textarea name="message" placeholder="How can we help you?" required className="w-full p-4 bg-gray-50 border border-gray-100 text-[#2D4F3E] text-sm h-32 focus:border-[#D4AF37] outline-none" />
-                    <ValidationError field="message" prefix="Message" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={contactState.submitting}
-                    className="w-full bg-[#D4AF37] text-white py-4 font-bold uppercase tracking-widest text-xs hover:bg-[#B89830] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Send size={16} /> {contactState.submitting ? 'Sending…' : 'Send Message'}
-                  </button>
-                </form>
-              )}
-            </div>
+
           </div>
         </div>
       </section>
