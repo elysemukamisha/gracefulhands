@@ -139,7 +139,28 @@ const Home: React.FC = () => {
                   <p className="text-gray-400 text-sm">We'll be in touch within 24 hours.</p>
                 </div>
               ) : (
-                <form onSubmit={handleContactSubmit} className="flex flex-col flex-1 gap-6" encType="multipart/form-data">
+                <form onSubmit={handleContactSubmit} className="flex flex-col flex-1 gap-5" encType="multipart/form-data">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Your Name</label>
+                      <input
+                        type="text"
+                        name="name"
+                        required
+                        placeholder="Jane Doe"
+                        className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Phone</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        placeholder="780-000-0000"
+                        className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Your Email</label>
                     <input
@@ -147,13 +168,71 @@ const Home: React.FC = () => {
                       name="email"
                       required
                       placeholder="you@example.com"
-                      className="w-full p-4 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
                     />
                     <ValidationError field="email" prefix="Email" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
                   </div>
-                  <div className="flex-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Service</label>
+                      <input
+                        type="text"
+                        name="service"
+                        placeholder="e.g. Deep Tissue"
+                        className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Duration</label>
+                      <select
+                        name="duration"
+                        title="Duration"
+                        className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      >
+                        <option value="">Select…</option>
+                        <option value="30 min">30 min</option>
+                        <option value="45 min">45 min</option>
+                        <option value="60 min">60 min</option>
+                        <option value="75 min">75 min</option>
+                        <option value="90 min">90 min</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Pressure Preference</label>
+                    <select
+                      name="pressure"
+                      title="Pressure Preference"
+                      className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                    >
+                      <option value="">Select…</option>
+                      <option value="Light">Light</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Firm">Firm</option>
+                      <option value="Deep">Deep</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Focus Areas</label>
+                    <input
+                      type="text"
+                      name="focus"
+                      placeholder="e.g. Lower back, shoulders"
+                      className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Medical Notes</label>
+                    <textarea
+                      name="medical"
+                      rows={3}
+                      placeholder="Any injuries, conditions or allergies we should know about"
+                      className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none resize-none"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Attach a File</label>
-                    <div className="w-full p-4 bg-white border border-gray-100 h-full min-h-[120px] flex items-center">
+                    <div className="w-full p-3 bg-white border border-gray-100">
                       <input
                         type="file"
                         name="upload"
