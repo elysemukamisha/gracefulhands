@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Star, ShieldCheck, Heart, Sparkles, Send, Phone, MapPin, Mail, Mic, CheckCircle } from 'lucide-react';
 import { useForm, ValidationError } from '@formspree/react';
 import { SERVICES, TESTIMONIALS, TEAM, CONTACT_INFO } from '../constants';
 import VoiceAssistant from '../components/VoiceAssistant';
 import BookingReviewModal from '../components/BookingReviewModal';
+import { db } from '../lib/db';
 
 interface BookingSummary {
   firstName: string;
@@ -18,6 +19,27 @@ const Home: React.FC = () => {
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null);
   const [contactState, handleContactSubmit] = useForm('xlgeqjar');
+  const inquiryRef = useRef<{ name: string; phone: string; email: string; service: string; duration: string; pressure: string; focus: string; medical: string }>({ name: '', phone: '', email: '', service: '', duration: '', pressure: '', focus: '', medical: '' });
+  const leadSavedRef = useRef(false);
+
+  useEffect(() => {
+    if (contactState.succeeded && !leadSavedRef.current) {
+      leadSavedRef.current = true;
+      const d = inquiryRef.current;
+      db.addLead({
+        id: Date.now().toString(),
+        name: d.name,
+        phone: d.phone,
+        email: d.email,
+        serviceType: [d.service, d.duration].filter(Boolean).join(' — ') || 'Not specified',
+        painPoints: `Focus: ${d.focus || 'N/A'}. Medical: ${d.medical || 'N/A'}`,
+        hasInsurance: false,
+        status: 'New',
+        createdAt: new Date().toISOString(),
+        notes: `Pressure: ${d.pressure || 'N/A'}. Source: Inquiry Form`,
+      });
+    }
+  }, [contactState.succeeded]);
 
   const handleBookingCollected = (summary: BookingSummary) => {
     setBookingSummary(summary);
@@ -140,6 +162,9 @@ const Home: React.FC = () => {
                 </div>
               ) : (
                 <form onSubmit={handleContactSubmit} className="flex flex-col flex-1 gap-5" encType="multipart/form-data">
+                  <input type="hidden" name="_subject" value={`New Inquiry from ${inquiryRef.current.name || 'a client'} — Graceful Hands`} />
+                  <input type="hidden" name="source" value="Inquiry Form" />
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Your Name</label>
@@ -149,6 +174,7 @@ const Home: React.FC = () => {
                         required
                         placeholder="Jane Doe"
                         className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                        onChange={e => { inquiryRef.current.name = e.target.value; }}
                       />
                     </div>
                     <div>
@@ -158,6 +184,7 @@ const Home: React.FC = () => {
                         name="phone"
                         placeholder="780-000-0000"
                         className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                        onChange={e => { inquiryRef.current.phone = e.target.value; }}
                       />
                     </div>
                   </div>
@@ -169,6 +196,7 @@ const Home: React.FC = () => {
                       required
                       placeholder="you@example.com"
                       className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      onChange={e => { inquiryRef.current.email = e.target.value; }}
                     />
                     <ValidationError field="email" prefix="Email" errors={contactState.errors} className="text-red-400 text-xs mt-1" />
                   </div>
@@ -180,6 +208,7 @@ const Home: React.FC = () => {
                         name="service"
                         placeholder="e.g. Deep Tissue"
                         className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                        onChange={e => { inquiryRef.current.service = e.target.value; }}
                       />
                     </div>
                     <div>
@@ -188,6 +217,7 @@ const Home: React.FC = () => {
                         name="duration"
                         title="Duration"
                         className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                        onChange={e => { inquiryRef.current.duration = e.target.value; }}
                       >
                         <option value="">Select…</option>
                         <option value="30 min">30 min</option>
@@ -204,6 +234,7 @@ const Home: React.FC = () => {
                       name="pressure"
                       title="Pressure Preference"
                       className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      onChange={e => { inquiryRef.current.pressure = e.target.value; }}
                     >
                       <option value="">Select…</option>
                       <option value="Light">Light</option>
@@ -219,6 +250,7 @@ const Home: React.FC = () => {
                       name="focus"
                       placeholder="e.g. Lower back, shoulders"
                       className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none"
+                      onChange={e => { inquiryRef.current.focus = e.target.value; }}
                     />
                   </div>
                   <div>
@@ -228,6 +260,7 @@ const Home: React.FC = () => {
                       rows={3}
                       placeholder="Any injuries, conditions or allergies we should know about"
                       className="w-full p-3 bg-white border border-gray-100 text-[#2D4F3E] text-sm focus:border-[#D4AF37] outline-none resize-none"
+                      onChange={e => { inquiryRef.current.medical = e.target.value; }}
                     />
                   </div>
                   <div>

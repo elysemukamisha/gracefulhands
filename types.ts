@@ -24,6 +24,7 @@ export interface SiteSettings {
   instagramUrl: string;
   facebookUrl: string;
   announcementBar: string;
+  headshotUrl: string;
 }
 
 export interface Appointment {

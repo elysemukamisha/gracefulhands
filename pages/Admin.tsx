@@ -541,18 +541,36 @@ const SettingsManager = () => {
       </div>
 
       <section className="bg-white p-8 rounded-sm shadow-sm border border-gray-100">
+         <h3 className="font-bold serif text-[#2D4F3E] border-b border-gray-50 pb-4 mb-6">Images</h3>
+         <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2">Therapist Headshot URL</label>
+              <input
+                type="text" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-sm outline-none text-sm"
+                value={settings.headshotUrl || ''} onChange={e => setSettings({...settings, headshotUrl: e.target.value})}
+                placeholder="https://gracefulhands.ca/images/aubine.jpg"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Paste a direct image URL. To use your own photo, upload it via FTP to gracefulhands.ca/images/aubine.jpg then enter that URL here.</p>
+            </div>
+            {settings.headshotUrl && (
+              <img src={settings.headshotUrl} alt="Headshot preview" className="h-24 w-24 object-cover rounded-sm border border-gray-100" onError={e => (e.currentTarget.style.display = 'none')} />
+            )}
+         </div>
+      </section>
+
+      <section className="bg-white p-8 rounded-sm shadow-sm border border-gray-100">
          <h3 className="font-bold serif text-[#2D4F3E] border-b border-gray-50 pb-4 mb-6">Social Integration</h3>
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <label className="block text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2">Instagram Link</label>
-              <input 
+              <input
                 type="text" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-sm outline-none text-sm"
                 value={settings.instagramUrl} onChange={e => setSettings({...settings, instagramUrl: e.target.value})}
               />
             </div>
             <div>
               <label className="block text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2">Facebook Link</label>
-              <input 
+              <input
                 type="text" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-sm outline-none text-sm"
                 value={settings.facebookUrl} onChange={e => setSettings({...settings, facebookUrl: e.target.value})}
               />

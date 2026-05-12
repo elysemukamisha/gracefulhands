@@ -3,8 +3,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { CONTACT_INFO, TEAM } from '../constants';
 import { Sparkles, Heart, ShieldCheck, Award, Quote } from 'lucide-react';
+import { db } from '../lib/db';
 
 const About: React.FC = () => {
+  const headshotUrl = db.getSettings().headshotUrl || TEAM[0].headshot;
   return (
     <div className="pt-32 pb-24 bg-[#FCF9F5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -24,10 +26,10 @@ const About: React.FC = () => {
           
           <div className="relative group">
             <div className="overflow-hidden rounded-sm shadow-2xl relative z-10">
-                <img 
-                src={TEAM[0].headshot} 
-                alt={TEAM[0].name} 
-                className="w-full h-[650px] object-cover transition-transform duration-700 group-hover:scale-105" 
+                <img
+                src={headshotUrl}
+                alt={TEAM[0].name}
+                className="w-full h-[650px] object-cover transition-transform duration-700 group-hover:scale-105"
                 />
             </div>
             <div className="absolute -top-4 -left-4 w-full h-full border-2 border-[#D4AF37] -z-10 transition-all group-hover:-top-6 group-hover:-left-6"></div>
