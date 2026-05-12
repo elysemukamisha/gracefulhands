@@ -155,7 +155,7 @@ export const TEAM: Staff[] = [
     id: 's1',
     name: 'Aubine',
     bio: 'Welcome to Graceful Hands Therapeutic Massage. We specialize in therapeutic modalities that go beyond simple relaxation. By understanding anatomy and the science of muscle recovery, we target the root causes of discomfort.',
-    headshot: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=800',
+    headshot: 'https://gracefulhands.ca/images/aubine.jpg',
     specialties: ['Clinical Myofascial Release', 'Deep Tissue', 'Sports Massage'],
   }
 ];
